@@ -1,0 +1,10 @@
+# Pipeline template that defines common runtime environment variables.
+variables:
+  - name: ML_SERVICE_CONNECTION
+    value: my_svc_conn
+  - name: ML_WORKSPACE_NAME
+    value: my_workspace
+  - name: ML_RESOURCE_GROUP
+    value: my_resource_group
+  - name: ML_SUBSCRIPTION_ID
+    value: my_subscription_id

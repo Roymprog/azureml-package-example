@@ -1,0 +1,21 @@
+variables:
+  # Model parameters.
+  - name: MODEL_DEFAULT_NAME
+    value: "world"
+
+  # AML Compute Cluster config.
+  - name: AML_ENV_NAME
+    value: my_env  # TODO: Where is this used?
+  - name: AML_COMPUTE_CLUSTER_CPU_SKU
+    value: STANDARD_DS14_V2
+  - name: AML_COMPUTE_CLUSTER_NAME
+    value: my-cluster
+  - name: AML_CLUSTER_MIN_NODES
+    value: 0
+  - name: AML_CLUSTER_MAX_NODES
+    value: 4
+  - name: AML_CLUSTER_PRIORITY
+    value: lowpriority
+
+  - name: PIPELINE_BASE_NAME
+    value: my_pipeline

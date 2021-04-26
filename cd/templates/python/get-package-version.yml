@@ -1,0 +1,13 @@
+# Template that identifies the version of a Python library versioned with setuptools_scm.
+#
+# Assumes we have a valid Python environment to install + run setuptools_scm.
+
+steps:
+  - script: |
+      pip install setuptools_scm
+
+      SCM_VERSION=$(python -c "import setuptools_scm; print(setuptools_scm.get_version())")
+      echo "Identified library version as: ${SCM_VERSION}"
+
+      echo "##vso[task.setvariable variable=Custom.ScmVersion]$SCM_VERSION"
+    displayName: Determine library version

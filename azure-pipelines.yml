@@ -1,0 +1,101 @@
+variables:
+  conda.env_name: my-package
+  conda.env_file: environment.yml
+  branch.is_main: $[eq(variables['Build.SourceBranch'], 'refs/heads/master')]
+  branch.is_develop: $[eq(variables['Build.SourceBranch'], 'refs/heads/develop')]
+
+stages:
+  - stage: CI
+    jobs:
+      - job: Precommit
+        steps:
+          - task: PipAuthenticate@1
+            inputs:
+              artifactFeeds: insights-lab
+              onlyAddExtraIndex: true
+          - template: templates/python/conda-create.yml@ddt-mlops-cicd
+            parameters:
+              name: $(conda.env_name)
+              file: $(conda.env_file)
+              cache: true
+          - script: |
+              source activate $(conda.env_name)
+              pre-commit run --all
+            displayName: Run pre-commit hooks
+      - job: TestModel
+        displayName: Test model
+        dependsOn: Precommit
+        steps:
+          - template: cd/templates/python/conda-create.yml
+            parameters:
+              name: $(conda.env_name)
+              file: $(conda.env_file)
+              cache: true
+          - script: |
+              source activate $(conda.env_name)
+              make test
+            displayName: Run tests on model
+      - job: TestLibrary
+        displayName: Test library
+        dependsOn: Precommit
+        steps:
+          - template: cd/templates/python/conda-create.yml
+            parameters:
+              name: $(conda.env_name)
+              file: $(conda.env_file)
+              cache: true
+          - script: |
+              source activate $(conda.env_name)
+              pip install .
+            displayName: Install library
+          - script: |
+              source activate $(conda.env_name)
+              make test-installed
+            displayName: Run tests on library
+  - stage: Publish
+    dependsOn: CI
+    jobs:
+      - job: PublishVersion
+        displayName: Publish version
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: "3.x"
+          - template: cd/templates/python/get-package-version.yml
+          - script: echo "$(Custom.ScmVersion)" > version.txt
+          - task: PublishPipelineArtifact@0
+            displayName: Publish version
+            inputs:
+              artifactName: version
+              targetPath: version.txt
+      - job: PublishPackage
+        displayName: Publish library
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: "3.x"
+          - script: pip install pep517 wheel
+            displayName: Install build dependencies
+          - script: |
+              make dist
+            displayName: Build distribution
+          # Note: we use get-version here rather than using the generated wheel
+          # version to make sure that the wheel has the same version as the pipeline.
+          - template: cd/templates/python/get-package-version.yml
+          - task: PublishPipelineArtifact@0
+            inputs:
+              artifactName: library
+              targetPath: dist/my_package-$(Custom.ScmVersion)-py3-none-any.whl
+      - job: PublishDeploymentScripts
+        displayName: Publish deployment scripts
+        steps:
+          - task: PublishPipelineArtifact@0
+            displayName: Publish model
+            inputs:
+              artifactName: model
+              targetPath: model
+          - task: PublishPipelineArtifact@0
+            displayName: Publish deployment scripts
+            inputs:
+              artifactName: cd
+              targetPath: cd

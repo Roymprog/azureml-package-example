@@ -1,0 +1,48 @@
+# ==============================================================================
+# Template for installing packages using conda.
+#
+# Parameters
+# ----------
+# env_name: Name to use for the conda env.
+# env_yaml: Environment.yml file to use for installing packages.
+# python_version: Version of Python to install in the created env.
+# package_path: Path to a local package that should be installed into the
+#   environment if given.
+#
+# ==============================================================================
+
+parameters:
+  name: "default"
+  file: "environment.yml"
+  cache: true
+
+steps:
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+  - ${{ if eq(parameters.cache, true) }}:
+    - task: Cache@2
+      displayName: Check cache for conda environment
+      inputs:
+        key: conda_env | ${{ parameters.file }}
+        path: $(Pipeline.Workspace)/conda_envs
+        cacheHitVar: CACHE_RESTORED
+    - task: ExtractFiles@1
+      displayName: Restore conda environment from cache
+      inputs:
+        archiveFilePatterns: '$(Pipeline.Workspace)/conda_envs/*.tar.gz'
+        destinationFolder: /usr/share/miniconda/envs/
+        cleanDestinationFolder: false
+      condition: eq(variables.CACHE_RESTORED, 'true')
+  - script: conda env create --name ${{ parameters.name }} --file ${{ parameters.file }}
+    displayName: Create conda environment
+    condition: or(eq('${{ parameters.cache }}', false), eq(variables.CACHE_RESTORED, 'false'))
+  - ${{ if eq(parameters.cache, true) }}:
+    - task: ArchiveFiles@2
+      displayName: Archive conda environment (post-job cache)
+      condition: eq(variables.CACHE_RESTORED, 'false')
+      inputs:
+        rootFolderOrFile: '/usr/share/miniconda/envs/${{ parameters.name }}'
+        archiveFile: '$(Pipeline.Workspace)/conda_envs/${{ parameters.name }}.tar.gz'
+        archiveType: tar
+        tarCompression: gz
+        includeRootFolder: true
