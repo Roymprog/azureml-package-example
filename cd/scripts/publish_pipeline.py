@@ -7,8 +7,7 @@ from typing import Dict
 import click
 from azureml.core import Workspace, Environment
 from azureml.core.runconfig import RunConfiguration
-from azureml.data.data_reference import DataReference
-from azureml.pipeline.core import Pipeline, PipelineData
+from azureml.pipeline.core import Pipeline
 from azureml.pipeline.core.graph import PipelineParameter
 from azureml.pipeline.steps import PythonScriptStep
 

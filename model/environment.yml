@@ -10,7 +10,8 @@ dependencies:
   - pandas==1.1.4
   - requests==2.23.0
   - scikit-learn==0.22.2.post1
+  - packaging
 
 
   - pip:
-    - azureml-defaults==1.11.0
+    - azureml-defaults==1.41.0
