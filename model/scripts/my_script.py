@@ -11,5 +11,4 @@ def main(name):
 
 # pylint: disable=no-value-for-parameter
 if __name__ == "__main__":
-    setup_logging()
     main()

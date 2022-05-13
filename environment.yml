@@ -27,8 +27,8 @@ dependencies:
 
   - pip:
     # Model dependencies.
-    - azureml-defaults==1.11.0
-    - azureml-pipeline==1.11.0
+    - azureml-defaults==1.41.0
+    - azureml-pipeline==1.41.0
     - azure-storage-blob==2.1.0
 
     # Dev dependencies.

@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import Dict
 
 import click
 from azureml.core import Workspace, Environment
@@ -109,10 +110,7 @@ def main(
         ],
         runconfig=run_config,
         compute_target=compute_target,
-        inputs=[evaluation_data],
     )
-
-    evaluate_performance_step.run_after(upload_predictions_step)
 
     pipeline = Pipeline(
         workspace=workspace,
