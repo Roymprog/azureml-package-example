@@ -31,8 +31,8 @@ logging.basicConfig(
 @click.option("--model_dir", default="model")
 @click.option("--compute_name", required=True, envvar="AML_COMPUTE_CLUSTER_NAME")
 @click.option("--vm_size", required=True, envvar="AML_COMPUTE_CLUSTER_CPU_SKU")
-@click.option("--vm_min_nodes", required=True, envvar="AML_CLUSTER_MIN_NODES")
-@click.option("--vm_max_nodes", required=True, envvar="AML_CLUSTER_MAX_NODES")
+@click.option("--vm_min_nodes", required=True, envvar="AML_CLUSTER_MIN_NODES", type=int)
+@click.option("--vm_max_nodes", required=True, envvar="AML_CLUSTER_MAX_NODES", type=int)
 @click.option(
     "--pipeline_id_path",
     default=None,

@@ -32,9 +32,7 @@ def main(
     aad_token = auth.get_authentication_header()
 
     published_pipeline = PublishedPipeline.get(ws, pipeline_id)
-    published_pipeline
-
-    rest_endpoint = "https://westeurope.api.azureml.ms/pipelines/v1.0/subscriptions/8e155238-93f7-4377-9b62-6a2f4e51052e/resourceGroups/roy-van-santen-sandbox/providers/Microsoft.MachineLearningServices/workspaces/roy-van-santen/PipelineRuns/PipelineSubmit/b7c88abc-58d4-4615-9e42-4e373a5c7435" 
+    rest_endpoint = published_pipeline.endpoint
 
     print(
         "You can perform HTTP POST on URL {} to trigger this pipeline".format(rest_endpoint)
