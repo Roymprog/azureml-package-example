@@ -32,7 +32,7 @@ ws = run.experiment.workspace
 datastore = ws.get_default_datastore()
 datastore.upload_files(files=['./features.csv', './labels.csv'],
                        target_path='sklearn_regression/',
-                       overwrite=False)
+                       overwrite=True)
 
 input_data = Dataset.Tabular.from_delimited_files(path=[(datastore, 'sklearn_regression/features.csv')])
 input_dataset = input_data.register(workspace=ws,
@@ -62,18 +62,22 @@ for alpha in alphas:
     run.log('alpha', alpha)
     run.log('mse', mse)
 
-    model_file_name = 'ridge_{0:.2f}.pkl'.format(alpha)
+    model_name = 'ridge_{0:.2f}'.format(alpha)
+    model_file_name = f'{model_name}.pkl'
     model_path = os.path.join('./outputs/', model_file_name)
 
     # save model in the outputs folder so it automatically get uploaded
     joblib.dump(value=reg, filename=model_path)
 
+    # Upload model to run
+    run.upload_file(model_name, model_path)
+
     # Register model in the outputs folder so it automatically get uploaded
-    model = Model.register(workspace=ws,
-                       model_name=model_file_name[:-4:],          # Name of the registered model in your workspace.
-                       model_path=model_path,                # Local file to upload and register as a model.
-                       model_framework=Model.Framework.SCIKITLEARN,  # Framework used to create the model.
-                       model_framework_version=sklearnver,  # Version of scikit-learn used to create the model.
+    model = run.register_model(model_name=model_name,                       # Name of the to-be-registered model
+                       model_path=model_name,                       # Reference to the model file within the run context
+                       model_framework=Model.Framework.SCIKITLEARN, # Framework used to create the model.
+                       model_framework_version=sklearnver,          # Version of scikit-learn used to create the model.
+                       datasets=[("train_X", input_dataset), ("train_Y", output_dataset)],
                        sample_input_dataset=input_dataset,
                        sample_output_dataset=output_dataset,
                        resource_configuration=ResourceConfiguration(cpu=1, memory_in_gb=0.5),
