@@ -7,8 +7,8 @@ from typing import Dict
 import click
 from azureml.core import Workspace, Environment
 from azureml.core.runconfig import RunConfiguration
-from azureml.pipeline.core import Pipeline
-from azureml.pipeline.core.graph import PipelineParameter
+from azureml.pipeline.core import Pipeline, PipelineData
+from azureml.data import OutputFileDatasetConfig
 from azureml.pipeline.steps import PythonScriptStep
 
 
@@ -30,6 +30,7 @@ logging.basicConfig(
 @click.option("--pipeline_description", default="")
 @click.option("--model_dir", default="model")
 @click.option("--compute_name", required=True, envvar="AML_COMPUTE_CLUSTER_NAME")
+@click.option("--aks_cluster_name", required=True, envvar="AKS_INFERENCE_CLUSTER_NAME")
 @click.option("--vm_size", required=True, envvar="AML_COMPUTE_CLUSTER_CPU_SKU")
 @click.option("--vm_min_nodes", required=True, envvar="AML_CLUSTER_MIN_NODES", type=int)
 @click.option("--vm_max_nodes", required=True, envvar="AML_CLUSTER_MAX_NODES", type=int)
@@ -39,7 +40,6 @@ logging.basicConfig(
     type=Path,
     help="Output file to write the ID of the published pipeline to.",
 )
-@click.option("--default_name", required=True, envvar="MODEL_DEFAULT_NAME") # Example of default parameter
 @click.option("--dry-run/--no-dry-run", default=False)
 def main(
     workspace_name,
@@ -50,17 +50,14 @@ def main(
     pipeline_version,
     model_dir,
     compute_name,
+    aks_cluster_name,
     vm_size,
     vm_min_nodes,
     vm_max_nodes,
     pipeline_id_path,
-    default_name,
     dry_run,
 ):
     """Publishes the models ML pipeline to Azure ML."""
-
-    # Some custom parameter.
-    name = PipelineParameter("name", default_value=default_name)
 
     # Get Azure machine learning workspace
     workspace = Workspace.get(
@@ -69,6 +66,9 @@ def main(
         resource_group=resource_group,
     )
     logging.info("Using workspace: %s", repr(workspace))
+
+    # Get datastore
+    datastore = workspace.get_default_datastore()
 
     # Get Azure machine learning cluster
     compute_target = get_or_create_compute_target(
@@ -98,22 +98,69 @@ def main(
 
     logging.info("Using environment: %s", repr(run_config.environment))
 
+    scripts_dir = f'{model_dir}/scripts' 
 
-    example_step = PythonScriptStep(
-        name="Example step",
-        source_directory=model_dir,
-        script_name="scripts/my_script.py",
+    train_X_data_name = "train_X_data"
+    train_y_data_name = "train_y_data"
+
+    # Define train data
+    train_X_data = PipelineData(train_X_data_name, datastore=datastore)
+    train_y_data = PipelineData(train_y_data_name, datastore=datastore)
+
+    # Define pipeline data loading step
+    load_step = PythonScriptStep(
+        name="Load data",
+        source_directory=f'{scripts_dir}/load',
+        script_name="load_data.py",
+        outputs=[train_X_data, train_y_data],
         arguments=[
-            "--name",
-            name
+            "--output_train_data_features", train_X_data,
+            "--output_train_data_labels", train_y_data
         ],
         runconfig=run_config,
         compute_target=compute_target,
     )
 
+    # Define pipeline train step
+    # Define model output dir to write models
+    model_output_dir = PipelineData("models", datastore=datastore, is_directory=True)
+
+    train_step = PythonScriptStep(
+        name="Train",
+        source_directory=f'{scripts_dir}/train',
+        script_name="train.py",
+        inputs=[
+            train_X_data,
+            train_y_data,
+        ],
+        outputs=[model_output_dir],
+        arguments=[
+            "--train_features_dataset", train_X_data,
+            "--train_labels_dataset", train_y_data,
+            "--model_output_dir", model_output_dir,
+        ],
+        runconfig=run_config,
+        compute_target=compute_target,
+    )
+
+    # Define pipeline deploy step
+    deploy_step = PythonScriptStep(
+        name="Deploy",
+        source_directory=f'{scripts_dir}/deploy',
+        script_name="deploy.py",
+        arguments=[
+            "--aks_cluster_name", aks_cluster_name,
+            "--model_name", "ridge_0.95",
+            "--model_version", 6,
+            ],
+        inputs=[model_output_dir],
+        compute_target=compute_target,
+        allow_reuse=False,
+    )
+
     pipeline = Pipeline(
         workspace=workspace,
-        steps=[example_step],
+        steps=[load_step, train_step, deploy_step],
     )
     pipeline.validate()
 
